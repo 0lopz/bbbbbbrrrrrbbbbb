@@ -109,7 +109,7 @@ class PyBitDecompiler:
         except subprocess.CalledProcessError:
             return []
 
-    # [Rest of the methods from previous implementation]
+    
 
     def cleanup(self):
         """Clean up temporary files"""

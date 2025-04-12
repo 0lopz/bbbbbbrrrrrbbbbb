@@ -3,49 +3,22 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pybit Advanced Malware Analyzer</title>
+    <title>Pybit Malware Analyzer</title>
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
     <div class="container">
-        <header>
-            <h1>Pybit Advanced Malware Analyzer</h1>
-            <p class="subtitle">Professional-grade Python malware analysis tool</p>
-        </header>
-
-        <div class="feature-grid">
-            <div class="feature-card">
-                <div class="feature-icon">📄</div>
-                <h3>EXE Analysis</h3>
-                <p>Extract and decompile Python bytecode from executables</p>
-            </div>
-            
-            <div class="feature-card">
-                <div class="feature-icon">🔍</div>
-                <h3>Deep Deobfuscation</h3>
-                <p>Advanced deobfuscation for PyInstaller/py2exe outputs</p>
-            </div>
+        <h1>Malware Analyzer</h1>
+        <div class="upload-area" id="dropZone">
+            <input type="file" id="fileInput" accept=".py,.pyc,.pyz,.exe">
+            <p>Drag & drop files or click to browse</p>
         </div>
-
-        <div class="analyzer-section">
-            <div id="dropZone" class="drop-zone">
-                <div class="drop-content">
-                    <div class="file-icon">📁</div>
-                    <p>Drag & drop files here (.py, .pyc, .exe)</p>
-                    <input type="file" id="fileInput" accept=".py,.pyc,.exe">
-                </div>
-            </div>
-
-            <div id="loading" class="loading-container">
-                <div class="loader"></div>
-                <p id="progressText">Initializing analyzer...</p>
-                <progress id="progressBar" value="0" max="100"></progress>
-            </div>
-
-            <div id="results" class="results-container"></div>
+        <div class="progress-container">
+            <progress id="progressBar" value="0" max="100"></progress>
+            <p id="progressText"></p>
         </div>
+        <div id="results"></div>
     </div>
-
     <script src="script.js"></script>
 </body>
 </html>
