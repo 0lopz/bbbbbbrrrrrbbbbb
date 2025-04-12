@@ -1,0 +1,356 @@
+/* Base Styles */
+:root {
+    --primary: #4a6bff;
+    --primary-dark: #3a56cc;
+    --danger: #ff4757;
+    --warning: #ffa502;
+    --success: #2ed573;
+    --dark: #2f3542;
+    --light: #f1f2f6;
+    --gray: #a4b0be;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    line-height: 1.6;
+    color: var(--dark);
+    background-color: #f8f9fa;
+    margin: 0;
+    padding: 0;
+}
+
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 2rem;
+}
+
+header {
+    text-align: center;
+    margin-bottom: 2rem;
+}
+
+header h1 {
+    font-size: 2.5rem;
+    color: var(--primary);
+    margin-bottom: 0.5rem;
+}
+
+.subtitle {
+    font-size: 1.2rem;
+    color: var(--gray);
+}
+
+/* Feature Grid */
+.feature-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 3rem;
+}
+
+.feature-card {
+    background: white;
+    border-radius: 8px;
+    padding: 1.5rem;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    transition: transform 0.3s ease;
+}
+
+.feature-card:hover {
+    transform: translateY(-5px);
+}
+
+.feature-icon {
+    font-size: 2rem;
+    margin-bottom: 1rem;
+}
+
+/* Drop Zone */
+.drop-zone {
+    border: 3px dashed var(--gray);
+    border-radius: 8px;
+    padding: 3rem;
+    text-align: center;
+    margin: 2rem 0;
+    background-color: white;
+    transition: all 0.3s ease;
+    cursor: pointer;
+}
+
+.drop-zone.highlight {
+    border-color: var(--primary);
+    background-color: rgba(74, 107, 255, 0.05);
+}
+
+.drop-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.file-icon {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+    color: var(--primary);
+}
+
+.small {
+    font-size: 0.9rem;
+    color: var(--gray);
+}
+
+/* Loading State */
+.loading-container {
+    display: none;
+    text-align: center;
+    margin: 2rem 0;
+}
+
+.loader {
+    border: 5px solid var(--light);
+    border-top: 5px solid var(--primary);
+    border-radius: 50%;
+    width: 50px;
+    height: 50px;
+    animation: spin 1s linear infinite;
+    margin: 0 auto 1rem;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.progress-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+    margin-top: 1rem;
+}
+
+progress {
+    width: 300px;
+    height: 10px;
+    border-radius: 5px;
+}
+
+progress::-webkit-progress-bar {
+    background-color: var(--light);
+    border-radius: 5px;
+}
+
+progress::-webkit-progress-value {
+    background-color: var(--primary);
+    border-radius: 5px;
+}
+
+/* Results */
+.results-container {
+    display: none;
+    margin-top: 2rem;
+}
+
+.tabs {
+    display: flex;
+    border-bottom: 1px solid var(--gray);
+    margin-bottom: 1rem;
+}
+
+.tab-button {
+    padding: 0.75rem 1.5rem;
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 1rem;
+    color: var(--dark);
+    border-bottom: 3px solid transparent;
+    transition: all 0.3s ease;
+}
+
+.tab-button.active {
+    border-bottom-color: var(--primary);
+    color: var(--primary);
+    font-weight: bold;
+}
+
+.tab-content {
+    display: none;
+    padding: 1.5rem;
+    background: white;
+    border-radius: 0 0 8px 8px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.tab-content.active {
+    display: block;
+}
+
+/* Roadmap */
+.roadmap {
+    margin-top: 4rem;
+    padding-top: 2rem;
+    border-top: 1px solid var(--gray);
+}
+
+.roadmap h2 {
+    text-align: center;
+    margin-bottom: 2rem;
+    color: var(--primary);
+}
+
+.roadmap-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1.5rem;
+}
+
+.roadmap-item {
+    background: white;
+    padding: 1.5rem;
+    border-radius: 8px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.roadmap-item h3 {
+    color: var(--primary);
+    margin-top: 0;
+}
+
+/* Status Badges */
+.badge {
+    display: inline-block;
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    font-weight: bold;
+}
+
+.badge-danger {
+    background-color: #ffebee;
+    color: var(--danger);
+}
+
+.badge-warning {
+    background-color: #fff8e1;
+    color: var(--warning);
+}
+
+.badge-success {
+    background-color: #e8f5e9;
+    color: var(--success);
+}
+
+/* Tables */
+.table-container {
+    overflow-x: auto;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 1rem;
+}
+
+th, td {
+    padding: 0.75rem 1rem;
+    text-align: left;
+    border-bottom: 1px solid var(--light);
+}
+
+th {
+    background-color: var(--light);
+    font-weight: 600;
+}
+
+tr:hover {
+    background-color: rgba(74, 107, 255, 0.05);
+}
+
+/* Code Display */
+.code-display {
+    background: #282c34;
+    color: #abb2bf;
+    padding: 1rem;
+    border-radius: 6px;
+    overflow-x: auto;
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 0.9rem;
+    line-height: 1.5;
+    max-height: 500px;
+    overflow-y: auto;
+}
+
+.token {
+    color: #e06c75;
+}
+
+.string {
+    color: #98c379;
+}
+
+.keyword {
+    color: #c678dd;
+}
+
+.comment {
+    color: #5c6370;
+    font-style: italic;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .container {
+        padding: 1rem;
+    }
+    
+    .feature-grid, .roadmap-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .drop-zone {
+        padding: 2rem 1rem;
+    }
+}
+
+.exe-result {
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    padding: 15px;
+    margin-bottom: 20px;
+    background: #f9f9f9;
+}
+
+.exe-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.extracted-files {
+    margin-top: 15px;
+}
+
+.file-item {
+    padding: 10px;
+    background: white;
+    border-radius: 4px;
+    margin-bottom: 8px;
+    display: flex;
+    justify-content: space-between;
+}
+
+.decompiled-container {
+    margin-top: 10px;
+}
+
+.toggle-code {
+    background: #4a6bff;
+    color: white;
+    border: none;
+    padding: 5px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+}

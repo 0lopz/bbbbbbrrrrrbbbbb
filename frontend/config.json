@@ -1,0 +1,59 @@
+{
+    "urlPatterns": {
+        "malicious": [
+            "discond\\.com",
+            "geolocation\\.db\\.com",
+            "webhook",
+            "token=",
+            "api\\/v[0-9]\\/sueer",
+            "billing\\/payment-sources"
+        ],
+        "suspicious": [
+            "githubusercontent\\.com",
+            "bit\\.ly",
+            "short\\.url",
+            "tinyurl\\.com"
+        ]
+    },
+    "codePatterns": {
+        "constants": [
+            "WEBHOOK_URL",
+            "webhook",
+            "API_KEY",
+            "SECRET_KEY"
+        ],
+        "functions": [
+            "injection",
+            "Inject",
+            "get_passwords",
+            "grabTokens",
+            "keylogger",
+            "screen_capture"
+        ],
+        "keywords": [
+            "eval\\(",
+            "exec\\(",
+            "subprocess\\.",
+            "os\\.system",
+            "import\\s+socket",
+            "import\\s+requests",
+            "open\\(",
+            "getattr\\(",
+            "os\\.fork"
+        ]
+    },
+    "registryPatterns": {
+        "highRisk": [
+            "HKEY_CURRENT_USER\\\\Software\\\\Microsoft\\\\Windows\\\\CurrentVersion\\\\Policies\\\\System\\\\DisableTaskMgr",
+            "HKEY_LOCAL_MACHINE\\\\Software\\\\Microsoft\\\\Windows\\\\CurrentVersion\\\\Run",
+            "HKEY_LOCAL_MACHINE\\\\Software\\\\Microsoft\\\\Windows Defender\\\\DisableAntiSpyware"
+        ],
+        "mediumRisk": [
+            "HKEY_CURRENT_USER\\\\Software\\\\Microsoft\\\\Windows\\\\CurrentVersion\\\\Run",
+            "HKEY_LOCAL_MACHINE\\\\Software\\\\Microsoft\\\\Windows\\\\CurrentVersion\\\\Explorer\\\\ShellExecuteHooks"
+        ],
+        "lowRisk": [
+            "HKEY_LOCAL_MACHINE\\\\SOFTWARE\\\\Microsoft\\\\Windows\\\\CurrentVersion\\\\Explorer\\\\FileExts"
+        ]
+    }
+}
