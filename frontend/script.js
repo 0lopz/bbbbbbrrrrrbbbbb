@@ -1,17 +1,16 @@
 class MalwareAnalyzer {
     constructor() {
-        // Dynamic API endpoint detection for Vercel
-        this.apiEndpoint = window.location.hostname.includes('vercel.app') 
-            ? '/api/analyze' 
-            : 'http://localhost:3000/api/analyze';
+        // Dynamic API endpoint configuration
+        this.apiEndpoint = window.location.hostname.includes('localhost') 
+            ? 'http://localhost:3000/api/analyze'
+            : '/api/analyze';
         
         this.maxFileSize = 50 * 1024 * 1024; // 50MB
         this.supportedTypes = ['.py', '.pyc', '.pyz', '.exe'];
         this.abortController = null;
-        this.initEventListeners();
         
-        // Debug output
-        console.log('API Endpoint:', this.apiEndpoint);
+        console.log('API Endpoint:', this.apiEndpoint); // Debugging
+        this.initEventListeners();
     }
 
     initEventListeners() {
@@ -22,7 +21,7 @@ class MalwareAnalyzer {
         // Click handler
         dropZone.addEventListener('click', () => fileInput.click());
 
-        // Drag and drop handlers
+        // Drag and drop setup
         ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
             dropZone.addEventListener(eventName, this.preventDefaults, false);
             document.body.addEventListener(eventName, this.preventDefaults, false);
@@ -36,12 +35,10 @@ class MalwareAnalyzer {
             dropZone.addEventListener(eventName, this.unhighlightArea, false);
         });
 
-        dropZone.addEventListener('drop', this.handleDrop.bind(this), false);
-        fileInput.addEventListener('change', this.handleFileSelect.bind(this));
-        
-        if (cancelBtn) {
-            cancelBtn.addEventListener('click', this.cancelUpload.bind(this));
-        }
+        // Event handlers
+        dropZone.addEventListener('drop', e => this.handleDrop(e), false);
+        fileInput.addEventListener('change', e => this.handleFileSelect(e));
+        if (cancelBtn) cancelBtn.addEventListener('click', () => this.cancelUpload());
     }
 
     preventDefaults(e) {
@@ -66,36 +63,39 @@ class MalwareAnalyzer {
     }
 
     async handleDrop(e) {
-        const dt = e.dataTransfer;
-        const files = dt.files;
-        if (files.length > 0) {
-            await this.processFile(files[0]);
-        }
+        const files = e.dataTransfer.files;
+        if (files.length > 0) await this.processFile(files[0]);
     }
 
     async handleFileSelect(e) {
         if (e.target.files.length > 0) {
             await this.processFile(e.target.files[0]);
-            e.target.value = '';
+            e.target.value = ''; // Reset input
         }
     }
 
     async processFile(file) {
         try {
-            // Validate file
+            // Validation
             if (!this.isValidFile(file)) {
-                throw new Error(`Unsupported file type. Supported: ${this.supportedTypes.join(', ')}`);
+                throw new Error(`Unsupported file type. Allowed: ${this.supportedTypes.join(', ')}`);
             }
 
             if (file.size > this.maxFileSize) {
-                throw new Error(`File too large. Max size: ${this.maxFileSize/1024/1024}MB`);
+                throw new Error(`File too large (max ${this.maxFileSize/1024/1024}MB)`);
             }
 
-            this.showProgress('Uploading file...', 0);
+            this.showProgress('Uploading...', 0);
             this.abortController = new AbortController();
 
+            // Add timeout (30 seconds)
+            const timeoutId = setTimeout(() => {
+                this.abortController.abort();
+            }, 30000);
+
             const results = await this.uploadFile(file);
-            
+            clearTimeout(timeoutId);
+
             if (results?.error) {
                 throw new Error(results.error);
             }
@@ -104,8 +104,11 @@ class MalwareAnalyzer {
             this.showSuccess('Analysis complete!');
         } catch (error) {
             if (error.name !== 'AbortError') {
+                const friendlyError = error.message.includes('Failed to fetch')
+                    ? 'Server connection failed. Please try again.'
+                    : error.message;
+                this.showError(friendlyError);
                 console.error('Analysis error:', error);
-                this.showError(error.message);
             }
         } finally {
             this.hideProgress();
@@ -130,12 +133,12 @@ class MalwareAnalyzer {
 
             if (!response.ok) {
                 const error = await response.text();
-                throw new Error(error || 'Server error');
+                throw new Error(error || `Server error: ${response.status}`);
             }
 
             return await response.json();
         } catch (error) {
-            throw new Error(`Failed to connect to API: ${error.message}`);
+            throw new Error(`Network error: ${error.message}`);
         }
     }
 
@@ -151,8 +154,11 @@ class MalwareAnalyzer {
             progressContainer.style.display = 'block';
             const progressText = document.getElementById('progressText');
             const progressBar = document.getElementById('progressBar');
+            const cancelBtn = document.getElementById('cancelBtn');
+            
             if (progressText) progressText.textContent = message;
             if (progressBar) progressBar.value = percent;
+            if (cancelBtn) cancelBtn.style.display = 'block';
         }
     }
 
@@ -161,7 +167,10 @@ class MalwareAnalyzer {
         if (progressContainer) {
             progressContainer.style.display = 'none';
             const progressBar = document.getElementById('progressBar');
+            const cancelBtn = document.getElementById('cancelBtn');
+            
             if (progressBar) progressBar.value = 0;
+            if (cancelBtn) cancelBtn.style.display = 'none';
         }
     }
 
@@ -196,16 +205,17 @@ class MalwareAnalyzer {
     }
 
     escapeHtml(unsafe) {
-        return unsafe?.toString()
+        if (!unsafe) return '';
+        return unsafe.toString()
             .replace(/&/g, "&amp;")
             .replace(/</g, "&lt;")
             .replace(/>/g, "&gt;")
             .replace(/"/g, "&quot;")
-            .replace(/'/g, "&#039;") || '';
+            .replace(/'/g, "&#039;");
     }
 }
 
-// Initialize when DOM is loadedd
+// Initialize when ready
 document.addEventListener('DOMContentLoaded', () => {
     new MalwareAnalyzer();
 });
