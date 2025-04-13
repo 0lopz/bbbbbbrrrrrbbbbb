@@ -205,7 +205,7 @@ class MalwareAnalyzer {
     }
 }
 
-// Initialize when DOM is loaded
+// Initialize when DOM is loadedd
 document.addEventListener('DOMContentLoaded', () => {
     new MalwareAnalyzer();
 });
