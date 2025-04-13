@@ -2,7 +2,6 @@ class MalwareAnalyzer {
     constructor() {
         this.apiEndpoint = '/api/analyze';
         this.maxFileSize = 10 * 1024 * 1024; // 10MB
-        this.abortController = null;
         this.supportedTypes = ['.py', '.pyc', '.pyz', '.exe'];
         this.initEventListeners();
     }
@@ -28,8 +27,8 @@ class MalwareAnalyzer {
             dropZone.addEventListener(eventName, this.unhighlightArea, false);
         });
 
-        dropZone.addEventListener('drop', this.handleDrop.bind(this), false);
-        fileInput.addEventListener('change', this.handleFileSelect.bind(this));
+        dropZone.addEventListener('drop', e => this.handleDrop(e), false);
+        fileInput.addEventListener('change', e => this.handleFileSelect(e));
     }
 
     preventDefaults(e) {
@@ -46,44 +45,41 @@ class MalwareAnalyzer {
     }
 
     async handleDrop(e) {
-        const dt = e.dataTransfer;
-        const files = dt.files;
-        if (files.length > 0) {
-            await this.processFile(files[0]);
-        }
+        const files = e.dataTransfer.files;
+        if (files.length > 0) await this.processFile(files[0]);
     }
 
     async handleFileSelect(e) {
         if (e.target.files.length > 0) {
             await this.processFile(e.target.files[0]);
-            e.target.value = ''; // Reset input to allow same file re-upload
+            e.target.value = ''; // Reset input
         }
     }
 
     async processFile(file) {
         try {
+            // Validate file
             if (!this.isValidFile(file)) {
-                throw new Error(`Unsupported file type. Allowed: ${this.supportedTypes.join(', ')}`);
+                throw new Error(`Unsupported file type. Supported: ${this.supportedTypes.join(', ')}`);
             }
 
             if (file.size > this.maxFileSize) {
-                throw new Error(`File too large. Max size: ${this.maxFileSize/1024/1024}MB`);
+                throw new Error(`File too large (max ${this.maxFileSize/1024/1024}MB)`);
             }
 
-            this.showProgress('Uploading file...', 0);
-            this.abortController = new AbortController();
-
+            this.showProgress('Analyzing...', 50);
             const results = await this.uploadFile(file);
+            
+            if (results.error) {
+                throw new Error(results.error);
+            }
+
             this.displayResults(results);
             this.showSuccess('Analysis complete!');
         } catch (error) {
-            if (error.name !== 'AbortError') {
-                console.error('Analysis error:', error);
-                this.showError(error.message);
-            }
+            this.showError(error.message);
         } finally {
             this.hideProgress();
-            this.abortController = null;
         }
     }
 
@@ -91,21 +87,25 @@ class MalwareAnalyzer {
         const formData = new FormData();
         formData.append('file', file);
 
-        const response = await fetch(this.apiEndpoint, {
-            method: 'POST',
-            body: formData,
-            signal: this.abortController?.signal,
-            headers: {
-                'X-Filename': encodeURIComponent(file.name)
+        try {
+            const response = await fetch(this.apiEndpoint, {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-Filename': encodeURIComponent(file.name)
+                }
+            });
+
+            // Handle both JSON and text responses
+            const textData = await response.text();
+            try {
+                return JSON.parse(textData);
+            } catch {
+                throw new Error(textData || 'Invalid server response');
             }
-        });
-
-        if (!response.ok) {
-            const error = await response.json();
-            throw new Error(error.error || 'Analysis failed');
+        } catch (error) {
+            throw new Error(`Upload failed: ${error.message}`);
         }
-
-        return await response.json();
     }
 
     isValidFile(file) {
@@ -115,21 +115,19 @@ class MalwareAnalyzer {
     }
 
     showProgress(message, percent) {
-        const progressContainer = document.querySelector('.progress-container');
-        progressContainer.style.display = 'block';
+        const progress = document.querySelector('.progress-container');
+        progress.style.display = 'block';
         document.getElementById('progressText').textContent = message;
         document.getElementById('progressBar').value = percent;
     }
 
     hideProgress() {
         document.querySelector('.progress-container').style.display = 'none';
-        document.getElementById('progressBar').value = 0;
     }
 
     showError(message) {
-        const resultsDiv = document.getElementById('results');
-        resultsDiv.innerHTML = `
-            <div class="error">Error: ${this.escapeHtml(message)}</div>
+        document.getElementById('results').innerHTML = `
+            <div class="error">${this.escapeHtml(message)}</div>
         `;
     }
 
@@ -141,18 +139,14 @@ class MalwareAnalyzer {
     }
 
     displayResults(results) {
-        const resultsDiv = document.getElementById('results');
-        resultsDiv.innerHTML = `
+        document.getElementById('results').innerHTML = `
             <h3>Analysis Results</h3>
-            <div class="results-container">
-                <pre>${this.escapeHtml(JSON.stringify(results, null, 2))}</pre>
-            </div>
+            <pre>${this.escapeHtml(JSON.stringify(results, null, 2))}</pre>
         `;
     }
 
     escapeHtml(unsafe) {
-        return unsafe
-            .toString()
+        return unsafe.toString()
             .replace(/&/g, "&amp;")
             .replace(/</g, "&lt;")
             .replace(/>/g, "&gt;")
@@ -161,14 +155,7 @@ class MalwareAnalyzer {
     }
 }
 
-// Initialize when DOM is loaded
+// Initialize
 document.addEventListener('DOMContentLoaded', () => {
-    const analyzer = new MalwareAnalyzer();
-    
-    // Add cancel button functionality
-    document.body.addEventListener('click', (e) => {
-        if (e.target.classList.contains('cancel-btn')) {
-            analyzer.abortController?.abort();
-        }
-    });
+    new MalwareAnalyzer();
 });
