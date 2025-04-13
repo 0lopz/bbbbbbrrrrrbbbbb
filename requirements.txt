@@ -1,0 +1,8 @@
+Flask==2.3.2
+Werkzeug==2.3.6
+requests==2.31.0
+pyinstaller==5.11.0
+lzma==1.0
+pycdc==0.1.0
+pycdas==0.1.0
+upx==1.0.0
