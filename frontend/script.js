@@ -1,10 +1,17 @@
 class MalwareAnalyzer {
     constructor() {
-        this.apiEndpoint = '/api/analyze';
-        this.maxFileSize = 50 * 1024 * 1024; // 50MB limit
+        // Dynamic API endpoint detection for Vercel
+        this.apiEndpoint = window.location.hostname.includes('vercel.app') 
+            ? '/api/analyze' 
+            : 'http://localhost:3000/api/analyze';
+        
+        this.maxFileSize = 50 * 1024 * 1024; // 50MB
         this.supportedTypes = ['.py', '.pyc', '.pyz', '.exe'];
         this.abortController = null;
         this.initEventListeners();
+        
+        // Debug output
+        console.log('API Endpoint:', this.apiEndpoint);
     }
 
     initEventListeners() {
@@ -31,7 +38,10 @@ class MalwareAnalyzer {
 
         dropZone.addEventListener('drop', this.handleDrop.bind(this), false);
         fileInput.addEventListener('change', this.handleFileSelect.bind(this));
-        cancelBtn?.addEventListener('click', this.cancelUpload.bind(this));
+        
+        if (cancelBtn) {
+            cancelBtn.addEventListener('click', this.cancelUpload.bind(this));
+        }
     }
 
     preventDefaults(e) {
@@ -66,7 +76,7 @@ class MalwareAnalyzer {
     async handleFileSelect(e) {
         if (e.target.files.length > 0) {
             await this.processFile(e.target.files[0]);
-            e.target.value = ''; // Reset input
+            e.target.value = '';
         }
     }
 
@@ -74,7 +84,7 @@ class MalwareAnalyzer {
         try {
             // Validate file
             if (!this.isValidFile(file)) {
-                throw new Error(`Unsupported file type. Allowed: ${this.supportedTypes.join(', ')}`);
+                throw new Error(`Unsupported file type. Supported: ${this.supportedTypes.join(', ')}`);
             }
 
             if (file.size > this.maxFileSize) {
@@ -86,7 +96,7 @@ class MalwareAnalyzer {
 
             const results = await this.uploadFile(file);
             
-            if (results.error) {
+            if (results?.error) {
                 throw new Error(results.error);
             }
 
@@ -113,19 +123,19 @@ class MalwareAnalyzer {
                 body: formData,
                 signal: this.abortController?.signal,
                 headers: {
-                    'X-Filename': encodeURIComponent(file.name)
+                    'X-Filename': encodeURIComponent(file.name),
+                    'Accept': 'application/json'
                 }
             });
 
-            // Handle both JSON and text responses
-            const textData = await response.text();
-            try {
-                return JSON.parse(textData);
-            } catch {
-                throw new Error(textData || 'Invalid server response');
+            if (!response.ok) {
+                const error = await response.text();
+                throw new Error(error || 'Server error');
             }
+
+            return await response.json();
         } catch (error) {
-            throw new Error(`Upload failed: ${error.message}`);
+            throw new Error(`Failed to connect to API: ${error.message}`);
         }
     }
 
@@ -137,55 +147,61 @@ class MalwareAnalyzer {
 
     showProgress(message, percent) {
         const progressContainer = document.querySelector('.progress-container');
-        progressContainer.style.display = 'block';
-        document.getElementById('progressText').textContent = message;
-        document.getElementById('progressBar').value = percent;
-        
-        // Show cancel button
-        const cancelBtn = document.getElementById('cancelBtn');
-        if (cancelBtn) cancelBtn.style.display = 'inline-block';
+        if (progressContainer) {
+            progressContainer.style.display = 'block';
+            const progressText = document.getElementById('progressText');
+            const progressBar = document.getElementById('progressBar');
+            if (progressText) progressText.textContent = message;
+            if (progressBar) progressBar.value = percent;
+        }
     }
 
     hideProgress() {
-        document.querySelector('.progress-container').style.display = 'none';
-        document.getElementById('progressBar').value = 0;
-        
-        // Hide cancel button
-        const cancelBtn = document.getElementById('cancelBtn');
-        if (cancelBtn) cancelBtn.style.display = 'none';
+        const progressContainer = document.querySelector('.progress-container');
+        if (progressContainer) {
+            progressContainer.style.display = 'none';
+            const progressBar = document.getElementById('progressBar');
+            if (progressBar) progressBar.value = 0;
+        }
     }
 
     showError(message) {
         const resultsDiv = document.getElementById('results');
-        resultsDiv.innerHTML = `
-            <div class="error">${this.escapeHtml(message)}</div>
-        `;
+        if (resultsDiv) {
+            resultsDiv.innerHTML = `
+                <div class="error">${this.escapeHtml(message)}</div>
+            `;
+        }
     }
 
     showSuccess(message) {
         const resultsDiv = document.getElementById('results');
-        resultsDiv.innerHTML += `
-            <div class="success">${this.escapeHtml(message)}</div>
-        `;
+        if (resultsDiv) {
+            resultsDiv.innerHTML += `
+                <div class="success">${this.escapeHtml(message)}</div>
+            `;
+        }
     }
 
     displayResults(results) {
         const resultsDiv = document.getElementById('results');
-        resultsDiv.innerHTML = `
-            <h3>Analysis Results</h3>
-            <div class="results-container">
-                <pre>${this.escapeHtml(JSON.stringify(results, null, 2))}</pre>
-            </div>
-        `;
+        if (resultsDiv) {
+            resultsDiv.innerHTML = `
+                <h3>Analysis Results</h3>
+                <div class="results-container">
+                    <pre>${this.escapeHtml(JSON.stringify(results, null, 2))}</pre>
+                </div>
+            `;
+        }
     }
 
     escapeHtml(unsafe) {
-        return unsafe.toString()
+        return unsafe?.toString()
             .replace(/&/g, "&amp;")
             .replace(/</g, "&lt;")
             .replace(/>/g, "&gt;")
             .replace(/"/g, "&quot;")
-            .replace(/'/g, "&#039;");
+            .replace(/'/g, "&#039;") || '';
     }
 }
 
