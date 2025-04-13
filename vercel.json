@@ -2,18 +2,19 @@
   "version": 2,
   "builds": [
     {
-      "src": "frontend/**",
-      "use": "@vercel/static"
-    },
-    {
       "src": "api/analyze.py",
       "use": "@vercel/python",
       "config": {
         "runtime": "python3.9",
         "maxLambdaSize": "50mb",
         "includeFiles": ["backend/**"],
-        "memory": 3008
+        "memory": 3008,
+        "maxDuration": 30
       }
+    },
+    {
+      "src": "frontend/**",
+      "use": "@vercel/static"
     }
   ],
   "routes": [
@@ -21,11 +22,6 @@
       "src": "/api/analyze",
       "dest": "/api/analyze.py",
       "methods": ["POST"]
-    },
-    {
-      "src": "/(.*)", 
-      "dest": "/frontend/$1",
-      "methods": ["GET"]
     }
   ]
 }

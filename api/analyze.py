@@ -8,7 +8,7 @@ from http import HTTPStatus
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from backend.pybit import PyBitDecompiler
 
-# Set to 45MB (safe buffer under Vercel's 50MB limit)
+# Set to 45MB (5MB buffer under Vercel's 50MB limit)
 MAX_FILE_SIZE = 45 * 1024 * 1024
 DECOMPILER = PyBitDecompiler()
 
@@ -19,7 +19,18 @@ def analyze_file(file_path):
         return {'error': f"Analysis failed: {str(e)}"}
 
 def lambda_handler(event, context):
-    # First check payload size
+    # 1. Check if body exists
+    if 'body' not in event:
+        return {
+            'statusCode': HTTPStatus.BAD_REQUEST,
+            'body': json.dumps({'error': 'No file content provided'}),
+            'headers': {
+                'Content-Type': 'application/json',
+                'Access-Control-Allow-Origin': '*'
+            }
+        }
+
+    # 2. Nuclear payload size validation
     content_length = len(event.get('body', b''))
     if content_length > MAX_FILE_SIZE:
         return {
@@ -28,8 +39,9 @@ def lambda_handler(event, context):
                 'error': {
                     'code': 'FILE_TOO_LARGE',
                     'message': f'File exceeds {MAX_FILE_SIZE/1024/1024:.1f}MB limit',
-                    'max_size': MAX_FILE_SIZE,
-                    'received_size': content_length
+                    'max_allowed': f'{MAX_FILE_SIZE/1024/1024:.1f}MB',
+                    'received_size': f'{content_length/1024/1024:.2f}MB',
+                    'suggestion': 'Try files under 35MB for best results'
                 }
             }),
             'headers': {
@@ -40,20 +52,17 @@ def lambda_handler(event, context):
 
     temp_path = None
     try:
-        # Handle both base64 and binary
-        file_content = event.get('body')
-        if not file_content:
-            raise ValueError("No file content provided")
-            
+        # 3. Handle both base64 and binary
+        file_content = event['body']
         if isinstance(file_content, str):
             file_content = file_content.encode()
 
-        # Create temp file
+        # 4. Create temp file
         with tempfile.NamedTemporaryFile(delete=False) as tmp:
             tmp.write(file_content)
             temp_path = tmp.name
 
-        # Analyze file
+        # 5. Analyze file
         result = analyze_file(temp_path)
         if 'error' in result:
             raise Exception(result['error'])

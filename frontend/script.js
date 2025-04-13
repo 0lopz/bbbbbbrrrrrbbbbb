@@ -1,126 +1,55 @@
 class MalwareAnalyzer {
     constructor() {
-        // Dynamic endpoint configuration
-        this.apiEndpoint = window.location.hostname.includes('localhost') 
-            ? 'http://localhost:3000/api/analyze' 
-            : window.location.origin + '/api/analyze';
-        
-        // Conservative 40MB limit (under Vercel's 50MB)
-        this.maxFileSize = 40 * 1024 * 1024;
+        // Conservative 35MB limit (15MB buffer under backend's 45MB)
+        this.maxFileSize = 35 * 1024 * 1024;
         this.supportedTypes = ['.py', '.pyc', '.pyz', '.exe'];
         this.abortController = null;
-
-        console.log('Malware Analyzer initialized', {
-            endpoint: this.apiEndpoint,
-            maxSize: this.maxFileSize,
+        
+        console.log('Initialized with:', {
+            maxSize: `${this.maxFileSize/1024/1024}MB`,
             types: this.supportedTypes
         });
 
         this.initEventListeners();
     }
 
-    initEventListeners() {
-        const dropZone = document.getElementById('dropZone');
-        const fileInput = document.getElementById('fileInput');
-        const cancelBtn = document.getElementById('cancelBtn');
-
-        // Click handler
-        dropZone.addEventListener('click', () => fileInput.click());
-
-        // Drag and drop handlers
-        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
-            dropZone.addEventListener(eventName, this.preventDefaults, false);
-            document.body.addEventListener(eventName, this.preventDefaults, false);
-        });
-
-        ['dragenter', 'dragover'].forEach(eventName => {
-            dropZone.addEventListener(eventName, this.highlightArea, false);
-        });
-
-        ['dragleave', 'drop'].forEach(eventName => {
-            dropZone.addEventListener(eventName, this.unhighlightArea, false);
-        });
-
-        dropZone.addEventListener('drop', e => this.handleDrop(e), false);
-        fileInput.addEventListener('change', e => this.handleFileSelect(e));
-        if (cancelBtn) cancelBtn.addEventListener('click', () => this.cancelUpload());
-    }
-
-    preventDefaults(e) {
-        e.preventDefault();
-        e.stopPropagation();
-    }
-
-    highlightArea() {
-        document.getElementById('dropZone').classList.add('highlight');
-    }
-
-    unhighlightArea() {
-        document.getElementById('dropZone').classList.remove('highlight');
-    }
-
-    cancelUpload() {
-        if (this.abortController) {
-            this.abortController.abort();
-            this.showError('Upload cancelled');
-            this.hideProgress();
-        }
-    }
-
-    async handleDrop(e) {
-        const files = e.dataTransfer.files;
-        if (files.length > 0) {
-            document.getElementById('fileName').textContent = files[0].name;
-            await this.processFile(files[0]);
-        }
-    }
-
-    async handleFileSelect(e) {
-        if (e.target.files.length > 0) {
-            document.getElementById('fileName').textContent = e.target.files[0].name;
-            await this.processFile(e.target.files[0]);
-        }
-    }
-
     async processFile(file) {
         try {
-            // 1. Validate file size first
+            // 1. EXTREME size validation
             if (file.size > this.maxFileSize) {
                 throw new Error(
-                    `File too large (${(file.size/1024/1024).toFixed(1)}MB). ` +
-                    `Maximum allowed: ${this.maxFileSize/1024/1024}MB`
+                    `🚨 FILE TOO LARGE (${(file.size/1024/1024).toFixed(1)}MB)\n` +
+                    `• Our limit: ${this.maxFileSize/1024/1024}MB\n` +
+                    `• Vercel's max: 50MB\n` +
+                    `• Try smaller files!`
                 );
             }
 
             // 2. Validate file type
             if (!this.isValidFile(file)) {
-                throw new Error(`Unsupported file type. Supported: ${this.supportedTypes.join(', ')}`);
+                throw new Error(`Unsupported file type. We accept: ${this.supportedTypes.join(', ')}`);
             }
 
             this.showProgress('Uploading...', 0);
             this.abortController = new AbortController();
 
-            // 3. Upload with timeout protection
+            // 3. Upload with timeout
             const results = await Promise.race([
                 this.uploadFile(file),
                 new Promise((_, reject) => 
-                    setTimeout(() => reject(new Error('Upload timeout (30s)')), 30000)
+                    setTimeout(() => reject(new Error('Server took too long to respond')), 30000)
                 )
             ]);
             
-            if (results?.error) {
-                throw new Error(results.error);
-            }
-
             this.displayResults(results);
             this.showSuccess('Analysis complete!');
         } catch (error) {
             this.showError(
                 error.message.includes('Failed to fetch') 
-                    ? 'Server connection failed. Please try again later.'
+                    ? '🌐 Connection failed - check your network'
                     : error.message
             );
-            console.error('Upload Error:', error);
+            console.error('ANALYZER ERROR:', error);
         } finally {
             this.hideProgress();
             this.abortController = null;
@@ -131,7 +60,7 @@ class MalwareAnalyzer {
         const formData = new FormData();
         formData.append('file', file);
 
-        const response = await fetch(this.apiEndpoint, {
+        const response = await fetch('/api/analyze', {
             method: 'POST',
             body: formData,
             signal: this.abortController?.signal,
@@ -142,8 +71,8 @@ class MalwareAnalyzer {
         });
 
         if (!response.ok) {
-            const error = await response.text();
-            throw new Error(error || `Server error: ${response.status}`);
+            const error = await response.json().catch(() => ({}));
+            throw new Error(error.message || `Server error (${response.status})`);
         }
 
         return await response.json();
@@ -224,12 +153,11 @@ class MalwareAnalyzer {
     }
 }
 
-// Initialize when DOM is fully loaded
 document.addEventListener('DOMContentLoaded', () => {
-    // File name display handler
+    // File name display
     document.getElementById('fileInput').addEventListener('change', function(e) {
-        const fileName = e.target.files[0] ? e.target.files[0].name : 'No file chosen';
-        document.getElementById('fileName').textContent = fileName;
+        document.getElementById('fileName').textContent = 
+            e.target.files[0]?.name || 'No file chosen';
     });
 
     new MalwareAnalyzer();
