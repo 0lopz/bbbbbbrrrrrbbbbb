@@ -14,6 +14,17 @@ def analyze_file(file_path):
         return {'error': f"Analysis failed: {str(e)}"}
 
 def lambda_handler(event, context):
+    # Check if body exists
+    if 'body' not in event:
+        return {
+            'statusCode': HTTPStatus.BAD_REQUEST,
+            'body': json.dumps({'error': 'No file content provided'}),
+            'headers': {
+                'Content-Type': 'application/json',
+                'Access-Control-Allow-Origin': '*'
+            }
+        }
+
     # Check payload size
     content_length = len(event.get('body', b''))
     if content_length > MAX_FILE_SIZE:
@@ -22,8 +33,7 @@ def lambda_handler(event, context):
             'body': json.dumps({'error': f'File exceeds {MAX_FILE_SIZE/1024/1024}MB limit'}),
             'headers': {
                 'Content-Type': 'application/json',
-                'Access-Control-Allow-Origin': '*',
-                'Access-Control-Allow-Methods': 'POST'
+                'Access-Control-Allow-Origin': '*'
             }
         }
 
@@ -34,7 +44,7 @@ def lambda_handler(event, context):
         if isinstance(file_content, str):
             file_content = file_content.encode()
 
-        # Create temp file
+        # Create temp file with proper extension
         with tempfile.NamedTemporaryFile(delete=False) as tmp:
             tmp.write(file_content)
             temp_path = tmp.name

@@ -1,15 +1,10 @@
 class MalwareAnalyzer {
     constructor() {
-        // Dynamic API endpoint configuration
-        this.apiEndpoint = window.location.hostname.includes('localhost') 
-            ? 'http://localhost:3000/api/analyze'
-            : '/api/analyze';
-        
+        this.apiEndpoint = window.location.origin + '/api/analyze';
         this.maxFileSize = 50 * 1024 * 1024; // 50MB
         this.supportedTypes = ['.py', '.pyc', '.pyz', '.exe'];
         this.abortController = null;
-        
-        console.log('API Endpoint:', this.apiEndpoint); // Debugging
+        console.log('API Endpoint:', this.apiEndpoint);
         this.initEventListeners();
     }
 
@@ -21,7 +16,7 @@ class MalwareAnalyzer {
         // Click handler
         dropZone.addEventListener('click', () => fileInput.click());
 
-        // Drag and drop setup
+        // Drag and drop handlers
         ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
             dropZone.addEventListener(eventName, this.preventDefaults, false);
             document.body.addEventListener(eventName, this.preventDefaults, false);
@@ -35,7 +30,6 @@ class MalwareAnalyzer {
             dropZone.addEventListener(eventName, this.unhighlightArea, false);
         });
 
-        // Event handlers
         dropZone.addEventListener('drop', e => this.handleDrop(e), false);
         fileInput.addEventListener('change', e => this.handleFileSelect(e));
         if (cancelBtn) cancelBtn.addEventListener('click', () => this.cancelUpload());
@@ -70,32 +64,25 @@ class MalwareAnalyzer {
     async handleFileSelect(e) {
         if (e.target.files.length > 0) {
             await this.processFile(e.target.files[0]);
-            e.target.value = ''; // Reset input
+            e.target.value = '';
         }
     }
 
     async processFile(file) {
         try {
-            // Validation
             if (!this.isValidFile(file)) {
-                throw new Error(`Unsupported file type. Allowed: ${this.supportedTypes.join(', ')}`);
+                throw new Error(`Unsupported file type. Supported: ${this.supportedTypes.join(', ')}`);
             }
 
             if (file.size > this.maxFileSize) {
-                throw new Error(`File too large (max ${this.maxFileSize/1024/1024}MB)`);
+                throw new Error(`File exceeds ${this.maxFileSize/1024/1024}MB limit`);
             }
 
             this.showProgress('Uploading...', 0);
             this.abortController = new AbortController();
 
-            // Add timeout (30 seconds)
-            const timeoutId = setTimeout(() => {
-                this.abortController.abort();
-            }, 30000);
-
             const results = await this.uploadFile(file);
-            clearTimeout(timeoutId);
-
+            
             if (results?.error) {
                 throw new Error(results.error);
             }
@@ -103,13 +90,12 @@ class MalwareAnalyzer {
             this.displayResults(results);
             this.showSuccess('Analysis complete!');
         } catch (error) {
-            if (error.name !== 'AbortError') {
-                const friendlyError = error.message.includes('Failed to fetch')
-                    ? 'Server connection failed. Please try again.'
-                    : error.message;
-                this.showError(friendlyError);
-                console.error('Analysis error:', error);
-            }
+            this.showError(
+                error.message.includes('Failed to fetch') 
+                    ? 'Server connection failed. Please try again later.'
+                    : error.message
+            );
+            console.error('Error:', error);
         } finally {
             this.hideProgress();
             this.abortController = null;
@@ -120,26 +106,22 @@ class MalwareAnalyzer {
         const formData = new FormData();
         formData.append('file', file);
 
-        try {
-            const response = await fetch(this.apiEndpoint, {
-                method: 'POST',
-                body: formData,
-                signal: this.abortController?.signal,
-                headers: {
-                    'X-Filename': encodeURIComponent(file.name),
-                    'Accept': 'application/json'
-                }
-            });
-
-            if (!response.ok) {
-                const error = await response.text();
-                throw new Error(error || `Server error: ${response.status}`);
+        const response = await fetch(this.apiEndpoint, {
+            method: 'POST',
+            body: formData,
+            signal: this.abortController?.signal,
+            headers: {
+                'X-Filename': encodeURIComponent(file.name),
+                'Accept': 'application/json'
             }
+        });
 
-            return await response.json();
-        } catch (error) {
-            throw new Error(`Network error: ${error.message}`);
+        if (!response.ok) {
+            const error = await response.text();
+            throw new Error(error || `Server error: ${response.status}`);
         }
+
+        return await response.json();
     }
 
     isValidFile(file) {
@@ -215,7 +197,6 @@ class MalwareAnalyzer {
     }
 }
 
-// Initialize when ready
 document.addEventListener('DOMContentLoaded', () => {
     new MalwareAnalyzer();
 });
