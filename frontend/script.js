@@ -1,11 +1,11 @@
 class MalwareAnalyzer {
     constructor() {
         this.apiEndpoint = window.location.origin + '/api/analyze';
-        this.maxFileSize = 50 * 1024 * 1024; // 50MB
+        this.maxFileSize = 45 * 1024 * 1024; // 45MB (safety margin under Vercel's 50MB limit)
         this.supportedTypes = ['.py', '.pyc', '.pyz', '.exe'];
         this.abortController = null;
-        console.log('API Endpoint:', this.apiEndpoint);
         this.initEventListeners();
+        console.log('Malware Analyzer initialized. Max file size:', this.maxFileSize/1024/1024 + 'MB');
     }
 
     initEventListeners() {
@@ -70,12 +70,14 @@ class MalwareAnalyzer {
 
     async processFile(file) {
         try {
-            if (!this.isValidFile(file)) {
-                throw new Error(`Unsupported file type. Supported: ${this.supportedTypes.join(', ')}`);
+            // First validate file size
+            if (file.size > this.maxFileSize) {
+                throw new Error(`File too large. Maximum size is ${(this.maxFileSize/1024/1024).toFixed(1)}MB`);
             }
 
-            if (file.size > this.maxFileSize) {
-                throw new Error(`File exceeds ${this.maxFileSize/1024/1024}MB limit`);
+            // Then validate file type
+            if (!this.isValidFile(file)) {
+                throw new Error(`Unsupported file type. Supported: ${this.supportedTypes.join(', ')}`);
             }
 
             this.showProgress('Uploading...', 0);
@@ -106,22 +108,26 @@ class MalwareAnalyzer {
         const formData = new FormData();
         formData.append('file', file);
 
-        const response = await fetch(this.apiEndpoint, {
-            method: 'POST',
-            body: formData,
-            signal: this.abortController?.signal,
-            headers: {
-                'X-Filename': encodeURIComponent(file.name),
-                'Accept': 'application/json'
+        try {
+            const response = await fetch(this.apiEndpoint, {
+                method: 'POST',
+                body: formData,
+                signal: this.abortController?.signal,
+                headers: {
+                    'X-Filename': encodeURIComponent(file.name),
+                    'Accept': 'application/json'
+                }
+            });
+
+            if (!response.ok) {
+                const error = await response.text();
+                throw new Error(error || `Server error: ${response.status}`);
             }
-        });
 
-        if (!response.ok) {
-            const error = await response.text();
-            throw new Error(error || `Server error: ${response.status}`);
+            return await response.json();
+        } catch (error) {
+            throw new Error(`Upload failed: ${error.message}`);
         }
-
-        return await response.json();
     }
 
     isValidFile(file) {

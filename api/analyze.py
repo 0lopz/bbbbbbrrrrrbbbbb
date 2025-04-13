@@ -4,7 +4,8 @@ import tempfile
 from http import HTTPStatus
 from backend.pybit import PyBitDecompiler
 
-MAX_FILE_SIZE = 50 * 1024 * 1024  # 50MB
+# Set to 45MB to stay under Vercel's 50MB limit
+MAX_FILE_SIZE = 45 * 1024 * 1024
 DECOMPILER = PyBitDecompiler()
 
 def analyze_file(file_path):
@@ -14,23 +15,14 @@ def analyze_file(file_path):
         return {'error': f"Analysis failed: {str(e)}"}
 
 def lambda_handler(event, context):
-    # Check if body exists
-    if 'body' not in event:
-        return {
-            'statusCode': HTTPStatus.BAD_REQUEST,
-            'body': json.dumps({'error': 'No file content provided'}),
-            'headers': {
-                'Content-Type': 'application/json',
-                'Access-Control-Allow-Origin': '*'
-            }
-        }
-
-    # Check payload size
+    # First check payload size
     content_length = len(event.get('body', b''))
     if content_length > MAX_FILE_SIZE:
         return {
             'statusCode': HTTPStatus.REQUEST_ENTITY_TOO_LARGE,
-            'body': json.dumps({'error': f'File exceeds {MAX_FILE_SIZE/1024/1024}MB limit'}),
+            'body': json.dumps({
+                'error': f'File exceeds {(MAX_FILE_SIZE/1024/1024):.1f}MB limit'
+            }),
             'headers': {
                 'Content-Type': 'application/json',
                 'Access-Control-Allow-Origin': '*'
@@ -40,11 +32,14 @@ def lambda_handler(event, context):
     temp_path = None
     try:
         # Handle both base64 and binary
-        file_content = event['body']
+        file_content = event.get('body')
+        if not file_content:
+            raise ValueError("No file content provided")
+            
         if isinstance(file_content, str):
             file_content = file_content.encode()
 
-        # Create temp file with proper extension
+        # Create temp file
         with tempfile.NamedTemporaryFile(delete=False) as tmp:
             tmp.write(file_content)
             temp_path = tmp.name
@@ -74,4 +69,7 @@ def lambda_handler(event, context):
         }
     finally:
         if temp_path and os.path.exists(temp_path):
-            os.remove(temp_path)
+            try:
+                os.remove(temp_path)
+            except:
+                pass
