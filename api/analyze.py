@@ -4,46 +4,38 @@ import tempfile
 from http import HTTPStatus
 from backend.pybit import PyBitDecompiler
 
+MAX_FILE_SIZE = 50 * 1024 * 1024  # 50MB
 DECOMPILER = PyBitDecompiler()
 
 def analyze_file(file_path):
-    """Analyze file with proper error handling"""
     try:
         return DECOMPILER.analyze_file(file_path)
     except Exception as e:
         return {'error': f"Analysis failed: {str(e)}"}
 
 def lambda_handler(event, context):
-    # Validate request
-    if not event.get('body'):
+    # Check payload size first
+    content_length = len(event.get('body', b''))
+    if content_length > MAX_FILE_SIZE:
         return {
-            'statusCode': HTTPStatus.BAD_REQUEST,
-            'body': json.dumps({'error': 'No file content provided'}),
+            'statusCode': HTTPStatus.REQUEST_ENTITY_TOO_LARGE,
+            'body': json.dumps({'error': f'File exceeds {MAX_FILE_SIZE/1024/1024}MB limit'}),
             'headers': {
                 'Content-Type': 'application/json',
                 'Access-Control-Allow-Origin': '*'
             }
         }
 
-    # Process file
     temp_path = None
     try:
-        # Handle binary/base64
         file_content = event['body']
         if isinstance(file_content, str):
-            if file_content.startswith('Request En'):  # Catch malformed requests
-                raise ValueError("Invalid request format")
             file_content = file_content.encode()
 
-        # Create temp file
         with tempfile.NamedTemporaryFile(delete=False) as tmp:
             tmp.write(file_content)
             temp_path = tmp.name
 
-        # Get filename
-        filename = event.get('headers', {}).get('x-filename', 'uploaded_file')
-
-        # Analyze
         result = analyze_file(temp_path)
         if 'error' in result:
             raise Exception(result['error'])
@@ -56,7 +48,6 @@ def lambda_handler(event, context):
                 'Access-Control-Allow-Origin': '*'
             }
         }
-
     except Exception as e:
         return {
             'statusCode': HTTPStatus.INTERNAL_SERVER_ERROR,
@@ -67,9 +58,5 @@ def lambda_handler(event, context):
             }
         }
     finally:
-        # Cleanup
         if temp_path and os.path.exists(temp_path):
-            try:
-                os.remove(temp_path)
-            except:
-                pass
+            os.remove(temp_path)

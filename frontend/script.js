@@ -1,14 +1,16 @@
 class MalwareAnalyzer {
     constructor() {
         this.apiEndpoint = '/api/analyze';
-        this.maxFileSize = 10 * 1024 * 1024; // 10MB
+        this.maxFileSize = 50 * 1024 * 1024; // 50MB limit
         this.supportedTypes = ['.py', '.pyc', '.pyz', '.exe'];
+        this.abortController = null;
         this.initEventListeners();
     }
 
     initEventListeners() {
         const dropZone = document.getElementById('dropZone');
         const fileInput = document.getElementById('fileInput');
+        const cancelBtn = document.getElementById('cancelBtn');
 
         // Click handler
         dropZone.addEventListener('click', () => fileInput.click());
@@ -27,8 +29,9 @@ class MalwareAnalyzer {
             dropZone.addEventListener(eventName, this.unhighlightArea, false);
         });
 
-        dropZone.addEventListener('drop', e => this.handleDrop(e), false);
-        fileInput.addEventListener('change', e => this.handleFileSelect(e));
+        dropZone.addEventListener('drop', this.handleDrop.bind(this), false);
+        fileInput.addEventListener('change', this.handleFileSelect.bind(this));
+        cancelBtn?.addEventListener('click', this.cancelUpload.bind(this));
     }
 
     preventDefaults(e) {
@@ -44,9 +47,20 @@ class MalwareAnalyzer {
         document.getElementById('dropZone').classList.remove('highlight');
     }
 
+    cancelUpload() {
+        if (this.abortController) {
+            this.abortController.abort();
+            this.showError('Upload cancelled');
+            this.hideProgress();
+        }
+    }
+
     async handleDrop(e) {
-        const files = e.dataTransfer.files;
-        if (files.length > 0) await this.processFile(files[0]);
+        const dt = e.dataTransfer;
+        const files = dt.files;
+        if (files.length > 0) {
+            await this.processFile(files[0]);
+        }
     }
 
     async handleFileSelect(e) {
@@ -60,14 +74,16 @@ class MalwareAnalyzer {
         try {
             // Validate file
             if (!this.isValidFile(file)) {
-                throw new Error(`Unsupported file type. Supported: ${this.supportedTypes.join(', ')}`);
+                throw new Error(`Unsupported file type. Allowed: ${this.supportedTypes.join(', ')}`);
             }
 
             if (file.size > this.maxFileSize) {
-                throw new Error(`File too large (max ${this.maxFileSize/1024/1024}MB)`);
+                throw new Error(`File too large. Max size: ${this.maxFileSize/1024/1024}MB`);
             }
 
-            this.showProgress('Analyzing...', 50);
+            this.showProgress('Uploading file...', 0);
+            this.abortController = new AbortController();
+
             const results = await this.uploadFile(file);
             
             if (results.error) {
@@ -77,9 +93,13 @@ class MalwareAnalyzer {
             this.displayResults(results);
             this.showSuccess('Analysis complete!');
         } catch (error) {
-            this.showError(error.message);
+            if (error.name !== 'AbortError') {
+                console.error('Analysis error:', error);
+                this.showError(error.message);
+            }
         } finally {
             this.hideProgress();
+            this.abortController = null;
         }
     }
 
@@ -91,6 +111,7 @@ class MalwareAnalyzer {
             const response = await fetch(this.apiEndpoint, {
                 method: 'POST',
                 body: formData,
+                signal: this.abortController?.signal,
                 headers: {
                     'X-Filename': encodeURIComponent(file.name)
                 }
@@ -115,18 +136,28 @@ class MalwareAnalyzer {
     }
 
     showProgress(message, percent) {
-        const progress = document.querySelector('.progress-container');
-        progress.style.display = 'block';
+        const progressContainer = document.querySelector('.progress-container');
+        progressContainer.style.display = 'block';
         document.getElementById('progressText').textContent = message;
         document.getElementById('progressBar').value = percent;
+        
+        // Show cancel button
+        const cancelBtn = document.getElementById('cancelBtn');
+        if (cancelBtn) cancelBtn.style.display = 'inline-block';
     }
 
     hideProgress() {
         document.querySelector('.progress-container').style.display = 'none';
+        document.getElementById('progressBar').value = 0;
+        
+        // Hide cancel button
+        const cancelBtn = document.getElementById('cancelBtn');
+        if (cancelBtn) cancelBtn.style.display = 'none';
     }
 
     showError(message) {
-        document.getElementById('results').innerHTML = `
+        const resultsDiv = document.getElementById('results');
+        resultsDiv.innerHTML = `
             <div class="error">${this.escapeHtml(message)}</div>
         `;
     }
@@ -139,9 +170,12 @@ class MalwareAnalyzer {
     }
 
     displayResults(results) {
-        document.getElementById('results').innerHTML = `
+        const resultsDiv = document.getElementById('results');
+        resultsDiv.innerHTML = `
             <h3>Analysis Results</h3>
-            <pre>${this.escapeHtml(JSON.stringify(results, null, 2))}</pre>
+            <div class="results-container">
+                <pre>${this.escapeHtml(JSON.stringify(results, null, 2))}</pre>
+            </div>
         `;
     }
 
@@ -155,7 +189,7 @@ class MalwareAnalyzer {
     }
 }
 
-// Initialize
+// Initialize when DOM is loaded
 document.addEventListener('DOMContentLoaded', () => {
     new MalwareAnalyzer();
 });

@@ -9,20 +9,17 @@
       "src": "api/analyze.py",
       "use": "@vercel/python",
       "config": {
-        "runtime": "python3.9",  
+        "maxLambdaSize": "50mb",
         "includeFiles": ["backend/**"],
-        "maxLambdaSize": "50mb"
+        "memory": 3008
       }
     }
   ],
   "routes": [
     {
       "src": "/api/analyze",
-      "dest": "/api/analyze.py"
-    },
-    {
-      "src": "/(.*)",
-      "dest": "/frontend/$1"
+      "dest": "/api/analyze.py",
+      "methods": ["POST"]
     }
   ]
 }
