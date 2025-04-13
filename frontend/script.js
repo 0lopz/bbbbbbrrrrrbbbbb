@@ -1,11 +1,16 @@
 class MalwareAnalyzer {
     constructor() {
-        this.apiEndpoint = window.location.origin + '/api/analyze';
-        this.maxFileSize = 45 * 1024 * 1024; // 45MB (safety margin under Vercel's 50MB limit)
+        // Dynamic endpoint detection
+        this.apiEndpoint = window.location.hostname.includes('localhost') 
+            ? 'http://localhost:3000/api/analyze'
+            : window.location.origin + '/api/analyze';
+        
+        this.maxFileSize = 45 * 1024 * 1024; // 45MB
         this.supportedTypes = ['.py', '.pyc', '.pyz', '.exe'];
         this.abortController = null;
+        
+        console.log('API Endpoint:', this.apiEndpoint); // Debugging
         this.initEventListeners();
-        console.log('Malware Analyzer initialized. Max file size:', this.maxFileSize/1024/1024 + 'MB');
     }
 
     initEventListeners() {
