@@ -4,12 +4,12 @@ import tempfile
 import sys
 from http import HTTPStatus
 
-# Fix Python imports - ADDED MISSING PARENTHESIS
+# Fix Python imports
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from backend.pybit import PyBitDecompiler
 
-# Set to 40MB to stay well under Vercel's 50MB limit
-MAX_FILE_SIZE = 40 * 1024 * 1024
+# Set to 45MB (safe buffer under Vercel's 50MB limit)
+MAX_FILE_SIZE = 45 * 1024 * 1024
 DECOMPILER = PyBitDecompiler()
 
 def analyze_file(file_path):
@@ -25,9 +25,12 @@ def lambda_handler(event, context):
         return {
             'statusCode': HTTPStatus.REQUEST_ENTITY_TOO_LARGE,
             'body': json.dumps({
-                'error': f'File exceeds {MAX_FILE_SIZE/1024/1024:.1f}MB limit',
-                'max_size': MAX_FILE_SIZE,
-                'received_size': content_length
+                'error': {
+                    'code': 'FILE_TOO_LARGE',
+                    'message': f'File exceeds {MAX_FILE_SIZE/1024/1024:.1f}MB limit',
+                    'max_size': MAX_FILE_SIZE,
+                    'received_size': content_length
+                }
             }),
             'headers': {
                 'Content-Type': 'application/json',
