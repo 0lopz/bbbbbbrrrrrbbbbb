@@ -20,10 +20,7 @@ def lambda_handler(event, context):
         return {
             'statusCode': HTTPStatus.REQUEST_ENTITY_TOO_LARGE,
             'body': json.dumps({'error': f'File exceeds {MAX_FILE_SIZE/1024/1024}MB limit'}),
-            'headers': {
-                'Content-Type': 'application/json',
-                'Access-Control-Allow-Origin': '*'
-            }
+            'headers': {'Content-Type': 'application/json'}
         }
 
     temp_path = None
@@ -43,19 +40,13 @@ def lambda_handler(event, context):
         return {
             'statusCode': HTTPStatus.OK,
             'body': json.dumps(result),
-            'headers': {
-                'Content-Type': 'application/json',
-                'Access-Control-Allow-Origin': '*'
-            }
+            'headers': {'Content-Type': 'application/json'}
         }
     except Exception as e:
         return {
             'statusCode': HTTPStatus.INTERNAL_SERVER_ERROR,
             'body': json.dumps({'error': str(e)}),
-            'headers': {
-                'Content-Type': 'application/json',
-                'Access-Control-Allow-Origin': '*'
-            }
+            'headers': {'Content-Type': 'application/json'}
         }
     finally:
         if temp_path and os.path.exists(temp_path):
